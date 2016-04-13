@@ -82,42 +82,32 @@ ggplot(dat.comp, aes(x = PC1, y = PC2)) +
   facet_wrap(~class) + geom_vline(xintercept = 0, col ="salmon") +
   geom_hline(yintercept = 0, col="salmon") +
   geom_point(alpha=0.2) 
+  
+################# Regresiones #######################
 
-## ------------------------------------------------------------------------
-############ test ############
-dat.comp.test <- data.frame(emb.pca[, c(1,2,5)])
-ggplot(dat.comp.test, aes(x = PC1, y = PC2)) +
-  facet_wrap(~class) + geom_vline(xintercept = 0, col ="salmon") +
-  geom_hline(yintercept = 0, col="salmon") +
-  geom_point(alpha=0.2)
+matrix.pca.reg <- cbind(matrix_pca,data.train[5])
+matrix.pca.reg <- cbind(matrix_pca[,c(1,2,3)],data.train[5])
 
-## ------------------------------------------------------------------------
-n <- nrow(data.train)
-mat <- matrix_pca
-val <- logical()
-for (i in 1:n){
-  if ( mat[i,2] > 0  )
-    val <- c(val,1)
-  else val <- c(val,0)
-}
-val <- as.factor(val)
-comp.pca <- cbind(data.train,val)
-table(comp.pca$class,comp.pca$val)
-print(prop.table(table(comp.pca$class,comp.pca$val),1))
+fit.pca <- glm(class ~ .,data=matrix.pca.reg,family=binomial())
+summary(fit.pca)
+str(fit.pca)
 
-############ test ############
-n <- nrow(data.test)
-mat <- emb.pca
-val <- logical()
-for (i in 1:n){
-  if ( mat[i,2] > 0  )
-    val <- c(val,1)
-  else val <- c(val,0)
-}
-val <- as.factor(val)
-comp.pca <- cbind(data.test,val)
-table(comp.pca$class,comp.pca$val)
-print(prop.table(table(comp.pca$class,comp.pca$val),1))
+test.pca <- predict(pca,data.test[,-5])
+summary(data.test[,5])
+pred.pca.reg <- predict(fit.pca, newdata = data.frame(test.pca),
+                        type="response") # predicted values
+pred.pca.reg.r <- round(pred.pca.reg)
+summary(as.factor(pred.pca.reg.r))
+varaux <- rep(0,872)
+test.pca.2 <- as.data.frame(cbind(data.test$class,
+                                  as.factor(pred.pca.reg.r),varaux))
+
+test.pca.2$varaux <- replace(varaux, which(test.pca.2$V1 != test.pca.2$V2), 1)
+
+summary(as.factor(test.pca.2$varaux))
+table(test.pca.2$V1,test.pca.2$V2)
+#renglones reales, columnas estimadas
+print(prop.table(table(test.pca.2$V1,test.pca.2$V2),1))
 
 
 #####################################################
@@ -170,40 +160,30 @@ ggplot(dat.kpca, aes(x = V1, y = V2)) +
   geom_hline(yintercept = 0, col="salmon") +
   geom_point(alpha=0.2) 
 
-## ------------------------------------------------------------------------
-############ test ############
-dat.comp.test <- data.frame(emb[, c(1,2,8)])
-ggplot(dat.comp.test, aes(x = V1, y = V2)) +
-  facet_wrap(~class) + geom_vline(xintercept = 0, col ="salmon") +
-  geom_hline(yintercept = 0, col="salmon") +
-  geom_point(alpha=0.2)
+################# Regresiones #######################
 
-## ------------------------------------------------------------------------
-n <- nrow(data.train)
-mat <- matrix.kpca
-val <- logical()
-for (i in 1:n){
-  if ( (mat[i,1] < 0 & mat[i,2] > 0) | (mat[i,1] > 0 & mat[i,2] < 0 ) )
-    val <- c(val,1)
-  else val <- c(val,0)
-}
-val <- as.factor(val)
-comp.kpca <- cbind(data.train,val)
-table(comp.kpca$class,comp.kpca$val)
-print(prop.table(table(comp.kpca$class,comp.kpca$val),1))
+matrix.kpca.reg <- cbind(matrix.kpca,data.train[5])
 
-############ test ############
-n <- nrow(data.test)
-mat <- emb
-val <- logical()
-for (i in 1:n){
-  if ( (mat[i,1] < 0 & mat[i,2] > 0) | (mat[i,1] > 0 & mat[i,2] < 0 ) )
-    val <- c(val,1)
-  else val <- c(val,0)
-}
-val <- as.factor(val)
-comp.kpca <- cbind(data.test,val)
-table(comp.kpca$class,comp.kpca$val)
-print(prop.table(table(comp.kpca$class,comp.kpca$val),1))
+fit.kpca <- glm(class ~ .,data=matrix.kpca.reg,family=binomial())
+fit.kpca <- glm(class ~ .,data=matrix.kpca.reg[,-c(4,5,7)],family=binomial())
+fit.kpca <- glm(class ~ .,data=matrix.kpca.reg[,-c(4,5,6,7)],family=binomial())
+summary(fit.kpca)
+#str(fit.kpca)
 
+test.kpca <- as.data.frame(predict(kpc,data.test[,-5]))
+names(test.kpca) <- c("V1","V2","V3","V4","V5","V6","V7")
 
+pred.kpca.reg <- predict(fit.kpca, newdata = test.kpca,
+                        type="response") # predicted values
+pred.kpca.reg.r <- round(pred.kpca.reg)
+summary(as.factor(pred.pca.reg.r))
+varaux2 <- rep(0,872)
+test.kpca.2 <- as.data.frame(cbind(data.test$class,
+                                  as.factor(pred.kpca.reg.r),varaux2))
+
+test.kpca.2$varaux2 <- replace(varaux2, which(test.kpca.2$V1 != test.kpca.2$V2), 1)
+
+summary(as.factor(test.kpca.2$varaux2))
+table(test.kpca.2$V1,test.kpca.2$V2)
+#renglones reales, columnas estimadas
+print(prop.table(table(test.kpca.2$V1,test.kpca.2$V2),1))
