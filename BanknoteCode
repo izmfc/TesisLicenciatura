@@ -1,0 +1,209 @@
+
+#####################################################
+#####################################################
+###################   BANKNOTE   ####################
+#####################################################
+#####################################################
+
+library(kernlab)
+library(ggplot2)
+
+data <- read.table("banknote_data.txt", sep = ",", col.names=c("variance","skewness",
+                                                               "curtosis","entropy","class"))
+
+data$class <- as.factor(data$class)
+summary(data)
+dim(data)
+set.seed(122803)
+muestra <- sample(1:nrow(data),500)
+data.train <- data[muestra,]
+data.test <- data[-muestra,]
+
+
+#####################################################
+################# EXPLORAR DATOS ####################
+#####################################################
+
+summary(data)
+sd(data$variance)
+sd(data$skewness)
+sd(data$curtosis)
+sd(data$entropy)
+
+qplot(variance,data=data,geom="histogram",fill=I("#CC99FF")) +
+  xlab("Varianza")+ylab("Frecuencia") 
+qplot(skewness,data=data,geom="histogram",fill=I("#6633FF")) +
+  xlab("Oblicuidad")+ylab("Frecuencia") 
+qplot(curtosis,data=data,geom="histogram",fill=I("#99CCFF")) +
+  xlab("Curtosis")+ylab("Frecuencia") 
+qplot(entropy,data=data,geom="histogram",fill=I("#3366FF")) +
+  xlab("Entropía")+ylab("Frecuencia") 
+
+ggplot(data, aes(class, variance)) + geom_boxplot() +
+  xlab("Tipo de billete")+ylab("Varianza") 
+ggplot(data, aes(class, skewness)) + geom_boxplot() +
+  xlab("Tipo de billete")+ylab("Oblicuidad") 
+ggplot(data, aes(class, curtosis)) + geom_boxplot() +
+  xlab("Tipo de billete")+ylab("Curtosis") 
+ggplot(data, aes(class, entropy)) + geom_boxplot() +
+  xlab("Tipo de billete")+ylab("Entropía") 
+
+
+#####################################################
+#################     PCA     #######################
+#####################################################
+
+pca <- prcomp(~.,data=data.train[,1:4])
+summary(pca)
+# Importance of components:
+#   PC1    PC2     PC3     PC4
+# Standard deviation     6.8914 3.1706 2.06969 1.43175
+# Proportion of Variance 0.7435 0.1574 0.06706 0.03209
+# Cumulative Proportion  0.7435 0.9009 0.96791 1.00000
+
+matrix_pca<-as.data.frame(pca$x)
+
+qplot(PC1,PC2,data=matrix_pca,color=factor(data.train$class))+
+  xlab("Primera Componente")+ylab("Segunda Componente") + theme(legend.title=element_blank())
+qplot(PC2,PC3,data=matrix_pca,color=factor(data.train$class))+
+  xlab("Segunda Componente")+ylab("Tercera Componente") + theme(legend.title=element_blank())
+qplot(PC3,PC4,data=matrix_pca,color=factor(data.train$class))+
+  xlab("Tercera Componente")+ylab("Cuarta Componente") + theme(legend.title=element_blank())
+
+emb.pca <- predict(pca,data.test[,-5])
+emb.pca <- emb.pca[,1:4]
+names(emb.pca) <- c("PC1","PC2","PC3","PC4")
+emb.pca <- as.data.frame(emb.pca)
+emb.pca$class <- as.character(data.test$class)
+
+## ------------------------------------------------------------------------
+dat.comp <- data.frame(pca$x[, 1:2], class = data.train[, 5])
+ggplot(dat.comp, aes(x = PC1, y = PC2)) +
+  facet_wrap(~class) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) 
+
+## ------------------------------------------------------------------------
+############ test ############
+dat.comp.test <- data.frame(emb.pca[, c(1,2,5)])
+ggplot(dat.comp.test, aes(x = PC1, y = PC2)) +
+  facet_wrap(~class) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2)
+
+## ------------------------------------------------------------------------
+n <- nrow(data.train)
+mat <- matrix_pca
+val <- logical()
+for (i in 1:n){
+  if ( mat[i,2] > 0  )
+    val <- c(val,1)
+  else val <- c(val,0)
+}
+val <- as.factor(val)
+comp.pca <- cbind(data.train,val)
+table(comp.pca$class,comp.pca$val)
+print(prop.table(table(comp.pca$class,comp.pca$val),1))
+
+############ test ############
+n <- nrow(data.test)
+mat <- emb.pca
+val <- logical()
+for (i in 1:n){
+  if ( mat[i,2] > 0  )
+    val <- c(val,1)
+  else val <- c(val,0)
+}
+val <- as.factor(val)
+comp.pca <- cbind(data.test,val)
+table(comp.pca$class,comp.pca$val)
+print(prop.table(table(comp.pca$class,comp.pca$val),1))
+
+
+#####################################################
+#################     KPCA    #######################
+#####################################################
+
+kpc <- kpca(~.,data=data.train[,1:4],kernel="rbfdot",
+            kpar=list(sigma=.01),features=7)
+matrix.kpca<-as.data.frame(rotated(kpc))
+qplot(V1,V2,data=matrix.kpca,color=factor(data.train$class))+
+  xlab("Primera Componente")+ylab("Segunda Componente") + theme(legend.title=element_blank())
+
+kpc <- kpca(~.,data=data.train[,1:4],kernel="rbfdot",
+            kpar=list(sigma=.5),features=7)
+matrix.kpca<-as.data.frame(rotated(kpc))
+qplot(V1,V2,data=matrix.kpca,color=factor(data.train$class))+
+  xlab("Primera Componente")+ylab("Segunda Componente") + theme(legend.title=element_blank())
+
+kpc <- kpca(~.,data=data.train[,1:4],kernel="rbfdot",
+            kpar=list(sigma=1),features=7)
+matrix.kpca<-as.data.frame(rotated(kpc))
+qplot(V1,V2,data=matrix.kpca,color=factor(data.train$class))+
+  xlab("Primera Componente")+ylab("Segunda Componente") + theme(legend.title=element_blank())
+
+kpc <- kpca(~.,data=data.train[,1:4],kernel="rbfdot",
+            kpar=list(sigma=.1),features=7)
+matrix.kpca<-as.data.frame(rotated(kpc))
+
+qplot(V1,V2,data=matrix.kpca,color=factor(data.train$class))+
+  xlab("Primera Componente")+ylab("Segunda Componente") + theme(legend.title=element_blank())
+qplot(V2,V3,data=matrix.kpca,color=factor(data.train$class))+
+  xlab("Segunda Componente")+ylab("Tercera Componente") + theme(legend.title=element_blank())
+qplot(V3,V4,data=matrix.kpca,color=factor(data.train$class))+
+  xlab("Tercera Componente")+ylab("Cuarta Componente") + theme(legend.title=element_blank())
+qplot(V4,V5,data=matrix.kpca,color=factor(data.train$class))+
+  xlab("Cuarta Componente")+ylab("Quinta Componente") + theme(legend.title=element_blank())
+qplot(V5,V6,data=matrix.kpca,color=factor(data.train$class))+
+  xlab("Quinta Componente")+ylab("Sexta Componente") + theme(legend.title=element_blank())
+qplot(V6,V7,data=matrix.kpca,color=factor(data.train$class))+
+  xlab("Sexta Componente")+ylab("SÃ©ptima Componente") + theme(legend.title=element_blank())
+
+emb <- predict(kpc,data.test[,-5])
+emb <- as.data.frame(emb)
+emb$class <- as.character(data.test$class)
+
+## ------------------------------------------------------------------------
+dat.kpca <- data.frame(matrix.kpca[, 1:2], class = data.train[, 5])
+ggplot(dat.kpca, aes(x = V1, y = V2)) +
+  facet_wrap(~class) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) 
+
+## ------------------------------------------------------------------------
+############ test ############
+dat.comp.test <- data.frame(emb[, c(1,2,8)])
+ggplot(dat.comp.test, aes(x = V1, y = V2)) +
+  facet_wrap(~class) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2)
+
+## ------------------------------------------------------------------------
+n <- nrow(data.train)
+mat <- matrix.kpca
+val <- logical()
+for (i in 1:n){
+  if ( (mat[i,1] < 0 & mat[i,2] > 0) | (mat[i,1] > 0 & mat[i,2] < 0 ) )
+    val <- c(val,1)
+  else val <- c(val,0)
+}
+val <- as.factor(val)
+comp.kpca <- cbind(data.train,val)
+table(comp.kpca$class,comp.kpca$val)
+print(prop.table(table(comp.kpca$class,comp.kpca$val),1))
+
+############ test ############
+n <- nrow(data.test)
+mat <- emb
+val <- logical()
+for (i in 1:n){
+  if ( (mat[i,1] < 0 & mat[i,2] > 0) | (mat[i,1] > 0 & mat[i,2] < 0 ) )
+    val <- c(val,1)
+  else val <- c(val,0)
+}
+val <- as.factor(val)
+comp.kpca <- cbind(data.test,val)
+table(comp.kpca$class,comp.kpca$val)
+print(prop.table(table(comp.kpca$class,comp.kpca$val),1))
+
+
