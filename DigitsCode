@@ -1,0 +1,350 @@
+#####################################################
+#####################################################
+####################   DIGITS   #####################
+#####################################################
+#####################################################
+
+library(kernlab)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ElemStatLearn)
+
+graficar_digitos <- function(datos){
+  mat_digitos <- lapply(1:nrow(datos), 
+                        function(x){ 
+                          t(matrix(as.numeric(datos[x, 2:257]), 
+                                   16, 16, byrow = T))[,16:1]
+                        })
+  image (z = Reduce("rbind", mat_digitos), col = terrain.colors(30))
+  text(seq(0,1,1/10) + 0.05, 0.05, label = datos[, 1], cex = 1.5)
+}
+
+set.seed(122803)
+zip_train <- data.frame(zip.train)
+dim(zip_train)
+str(zip_train)
+muestra <- zip_train %>% sample_n(10)
+graficar_digitos(muestra)
+summary(as.factor(zip_train$X1))
+qplot(factor(X1), data=zip_train, geom="bar", fill=factor(X1)) + xlab("DÃ­gito") + ylab("Frecuencia") + theme(legend.title=element_blank())
+
+muestra <- sample(1:nrow(zip_train),2000)
+muestra_dig <- zip_train[muestra,]
+
+#####################################################
+#################     PCA     #######################
+#####################################################
+
+pca <- prcomp(~.,data=muestra_dig[,-1])
+matrix_pca<-as.data.frame(pca$x)
+matrix_pca$digito <- as.character(muestra_dig$X1)
+
+qplot(PC1,PC2,data=matrix_pca,color=factor(digito))+
+  xlab("Primer Componente")+ylab("Segunda Componente") + theme(legend.title=element_blank())
+qplot(PC2,PC3,data=matrix_pca,color=factor(digito))+
+  xlab("Segunda Componente")+ylab("Tercer Componente") + theme(legend.title=element_blank())
+qplot(PC3,PC4,data=matrix_pca,color=factor(digito))+
+  xlab("Tercer Componente")+ylab("Cuarta Componente") + theme(legend.title=element_blank())
+qplot(PC4,PC5,data=matrix_pca,color=factor(digito))+
+  xlab("Cuarta Componente")+ylab("Quinta Componente") + theme(legend.title=element_blank())
+
+muestra2 <- sample(1:nrow(matrix_pca),500)
+matrix_pca2 <- matrix_pca[muestra2,]
+ggplot(matrix_pca2, aes(x=PC1, y=PC2, colour=digito, label=digito)) + geom_text(size=2) +
+  theme(legend.title=element_blank())
+
+## ------------------------------------------------------------------------
+dat.comp <- data.frame(pca$x[, 1:2], digito = muestra_dig[, 1])
+dat.comp <- subset(dat.comp, digito == 0 | digito == 1)
+ggplot(dat.comp, aes(x = PC1, y = PC2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-15, 10)) +  scale_y_continuous(limits = c(-10, 10))
+
+## ------------------------------------------------------------------------
+dat.comp <- data.frame(pca$x[, 1:2], digito = muestra_dig[, 1])
+dat.comp <- subset(dat.comp, digito == 2 | digito == 3)
+ggplot(dat.comp, aes(x = PC1, y = PC2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-15, 10)) +  scale_y_continuous(limits = c(-10, 10))
+
+## ------------------------------------------------------------------------
+dat.comp <- data.frame(pca$x[, 1:2], digito = muestra_dig[, 1])
+dat.comp <- subset(dat.comp, digito == 4 | digito == 5)
+ggplot(dat.comp, aes(x = PC1, y = PC2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-15, 10)) +  scale_y_continuous(limits = c(-10, 10))
+
+## ------------------------------------------------------------------------
+dat.comp <- data.frame(pca$x[, 1:2], digito = muestra_dig[, 1])
+dat.comp <- subset(dat.comp, digito == 6 | digito == 7)
+ggplot(dat.comp, aes(x = PC1, y = PC2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-15, 10)) +  scale_y_continuous(limits = c(-10, 10))
+
+## ------------------------------------------------------------------------
+dat.comp <- data.frame(pca$x[, 1:2], digito = muestra_dig[, 1])
+dat.comp <- subset(dat.comp, digito == 8 | digito == 9)
+ggplot(dat.comp, aes(x = PC1, y = PC2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-15, 10)) +  scale_y_continuous(limits = c(-10, 10))
+
+################# Regresiones #######################
+
+matrix_pca<-as.data.frame(pca$x)
+
+matrix.pca.reg <- cbind(matrix_pca[,1:20],digito=as.character(muestra_dig$X1))
+
+fit.pca <- multinom(digito ~ .,data=matrix.pca.reg)
+fit.pca
+#summary(fit.pca)
+#str(fit.pca)
+
+test.pca <- predict(pca,zip_test[,-1])
+pred.pca.reg <- predict(fit.pca, newdata = data.frame(test.pca),
+                        type="class") # predicted values
+summary(pred.pca.reg)
+varaux <- rep(0,2007)
+test.pca.2 <- as.data.frame(cbind(zip_test[,1],
+                                  as.factor(pred.pca.reg),varaux))
+summary(as.factor(test.pca.2$V2))
+test.pca.2$V2 <- test.pca.2$V2 - 1
+test.pca.2$varaux <- replace(varaux, which(test.pca.2$V1 != test.pca.2$V2), 1)
+
+summary(as.factor(test.pca.2$varaux))
+table(test.pca.2$V1,test.pca.2$V2)
+#renglones reales, columnas estimadas
+tabla <- round(prop.table(table(test.pca.2$V1,test.pca.2$V2),1),4)
+tabla
+for(i in 1:10){
+  print(i-1)
+  print(tabla[i,i])
+}
+
+
+#####################################################
+#################     KPCA    #######################
+#####################################################
+
+kpc <- kpca(~.,data=muestra_dig[,-1],kernel="rbfdot",
+            kpar=list(sigma = .01),features=5)
+matrix.kpca<-as.data.frame(rotated(kpc))
+matrix.kpca$digito <- as.character(muestra_dig$X1)
+
+qplot(V1,V2,data=matrix.kpca,color=factor(digito))+
+  xlab("Primer Componente")+ylab("Segunda Componente") + theme(legend.title=element_blank())
+qplot(V2,V3,data=matrix.kpca,color=factor(digito))+
+  xlab("Segunda Componente")+ylab("Tercer Componente") + theme(legend.title=element_blank())
+qplot(V3,V4,data=matrix.kpca,color=factor(digito))+
+  xlab("Tercer Componente")+ylab("Cuarta Componente") + theme(legend.title=element_blank())
+qplot(V4,V5,data=matrix.kpca,color=factor(digito))+
+  xlab("Cuarta Componente")+ylab("Quinta Componente") + theme(legend.title=element_blank())
+
+matrix.kpca2 <- matrix.kpca[muestra2,]
+ggplot(matrix.kpca2, aes(x=V1, y=V2, colour=digito, label=digito)) + geom_text(size=2) +
+  theme(legend.title=element_blank())
+
+## ------------------------------------------------------------------------
+dat.kpca <- data.frame(matrix.kpca[, 1:2], digito = muestra_dig[, 1])
+dat.kpca <- subset(dat.kpca, digito == 0 | digito == 1)
+ggplot(dat.kpca, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-20, 40)) +  scale_y_continuous(limits = c(-20, 30))
+
+## ------------------------------------------------------------------------
+dat.kpca <- data.frame(matrix.kpca[, 1:2], digito = muestra_dig[, 1])
+dat.kpca <- subset(dat.kpca, digito == 2 | digito == 3)
+ggplot(dat.kpca, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-20, 40)) +  scale_y_continuous(limits = c(-20, 30))
+
+## ------------------------------------------------------------------------
+dat.kpca <- data.frame(matrix.kpca[, 1:2], digito = muestra_dig[, 1])
+dat.kpca <- subset(dat.kpca, digito == 4 | digito == 5)
+ggplot(dat.kpca, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-20, 40)) +  scale_y_continuous(limits = c(-20, 30))
+
+## ------------------------------------------------------------------------
+dat.kpca <- data.frame(matrix.kpca[, 1:2], digito = muestra_dig[, 1])
+dat.kpca <- subset(dat.kpca, digito == 6 | digito == 7)
+ggplot(dat.kpca, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-20, 40)) +  scale_y_continuous(limits = c(-20, 30))
+
+## ------------------------------------------------------------------------
+dat.kpca <- data.frame(matrix.kpca[, 1:2], digito = muestra_dig[, 1])
+dat.kpca <- subset(dat.kpca, digito == 8 | digito == 9)
+ggplot(dat.kpca, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-20, 40)) +  scale_y_continuous(limits = c(-20, 30))
+
+################# Regresiones #######################
+
+kpc <- kpca(~.,data=muestra_dig[,-1],kernel="rbfdot",
+            kpar=list(sigma = .01),features=20)
+
+matrix.kpca<-as.data.frame(rotated(kpc))
+matrix.kpca$digito <- as.character(muestra_dig$X1)
+
+#matrix.pca.reg <- cbind(matrix_pca[,1:20],digito=as.character(muestra_dig$X1))
+
+matrix.kpca.reg <- cbind(matrix.kpca[,1:20],digito=matrix.kpca$digito)
+
+fit.kpca <- multinom(digito ~ .,data=matrix.kpca.reg)
+fit.kpca
+#summary(fit.kpca)
+#str(fit.kpca)
+
+test.kpca <- as.data.frame(predict(kpc,zip_test[,-1]))
+names(test.kpca) <- c("V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
+                      "V11","V12","V13","V14","V15","V16","V17","V18","V19","V20")
+pred.kpca.reg <- predict(fit.kpca, newdata = data.frame(test.kpca),
+                        type="class") # predicted values
+
+summary(pred.kpca.reg)
+varaux2 <- rep(0,2007)
+test.kpca.2 <- as.data.frame(cbind(zip_test[,1],
+                                  as.factor(pred.kpca.reg),varaux2))
+summary(as.factor(test.kpca.2$V2))
+test.kpca.2$V2 <- test.kpca.2$V2 - 1
+
+test.kpca.2$varaux2 <- replace(varaux2, which(test.kpca.2$V1 != test.kpca.2$V2), 1)
+
+summary(as.factor(test.kpca.2$varaux2))
+table(test.kpca.2$V1,test.kpca.2$V2)
+#renglones reales, columnas estimadas
+tabla <- round(prop.table(table(test.kpca.2$V1,test.kpca.2$V2),1),4)
+tabla
+for(i in 1:10){
+  print(i-1)
+  print(tabla[i,i])
+}
+
+#####################################################
+################# KPCA  POLI  #######################
+#####################################################
+
+kpc_pol <- kpca(~.,data=muestra_dig[,-1],kernel="polydot",
+                kpar=list(degree=2,scale=1,offset=1),features=5)
+matrix.kpcpol<-as.data.frame(rotated(kpc_pol))
+matrix.kpcpol$digito <- as.character(muestra_dig$X1)
+
+qplot(V1,V2,data=matrix.kpcpol,color=factor(digito))+
+  xlab("Primer Componente")+ylab("Segunda Componente") + theme(legend.title=element_blank())
+qplot(V2,V3,data=matrix.kpcpol,color=factor(digito))+
+  xlab("Segunda Componente")+ylab("Tercer Componente") + theme(legend.title=element_blank())
+qplot(V3,V4,data=matrix.kpcpol,color=factor(digito))+
+  xlab("Tercer Componente")+ylab("Cuarta Componente") + theme(legend.title=element_blank())
+qplot(V4,V5,data=matrix.kpcpol,color=factor(digito))+
+  xlab("Cuarta Componente")+ylab("Quinta Componente") + theme(legend.title=element_blank())
+
+matrix.kpcpol2 <- matrix.kpcpol[muestra2,]
+ggplot(matrix.kpcpol2, aes(x=V1, y=V2, colour=digito, label=digito)) + geom_text(size=2) +
+  theme(legend.title=element_blank())
+
+## ------------------------------------------------------------------------
+dat.kpcapol <- data.frame(matrix.kpcpol[, 1:2], digito = muestra_dig[, 1])
+dat.kpcapol <- subset(dat.kpcapol, digito == 0 | digito == 1)
+ggplot(dat.kpcapol, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-6000, 7500)) +  scale_y_continuous(limits = c(-5000, 6000))
+
+## ------------------------------------------------------------------------
+dat.kpcapol <- data.frame(matrix.kpcpol[, 1:2], digito = muestra_dig[, 1])
+dat.kpcapol <- subset(dat.kpcapol, digito == 2 | digito == 3)
+ggplot(dat.kpcapol, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-6000, 7500)) +  scale_y_continuous(limits = c(-5000, 6000))
+
+## ------------------------------------------------------------------------
+dat.kpcapol <- data.frame(matrix.kpcpol[, 1:2], digito = muestra_dig[, 1])
+dat.kpcapol <- subset(dat.kpcapol, digito == 4 | digito == 5)
+ggplot(dat.kpcapol, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-6000, 7500)) +  scale_y_continuous(limits = c(-5000, 6000))
+
+## ------------------------------------------------------------------------
+dat.kpcapol <- data.frame(matrix.kpcpol[, 1:2], digito = muestra_dig[, 1])
+dat.kpcapol <- subset(dat.kpcapol, digito == 6 | digito == 7)
+ggplot(dat.kpcapol, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-6000, 7500)) +  scale_y_continuous(limits = c(-5000, 6000))
+
+## ------------------------------------------------------------------------
+dat.kpcapol <- data.frame(matrix.kpcpol[, 1:2], digito = muestra_dig[, 1])
+dat.kpcapol <- subset(dat.kpcapol, digito == 8 | digito == 9)
+ggplot(dat.kpcapol, aes(x = V1, y = V2)) +
+  facet_wrap(~digito) + geom_vline(xintercept = 0, col ="salmon") +
+  geom_hline(yintercept = 0, col="salmon") +
+  geom_point(alpha=0.2) +
+  scale_x_continuous(limits = c(-6000, 7500)) +  scale_y_continuous(limits = c(-5000, 6000))
+
+################# Regresiones #######################
+
+kpc_pol <- kpca(~.,data=muestra_dig[,-1],kernel="polydot",
+                kpar=list(degree=2,scale=1,offset=1),features=20)
+
+matrix.kpca.pol<-as.data.frame(rotated(kpc_pol))
+matrix.kpca.pol$digito <- as.character(muestra_dig$X1)
+
+matrix.kpca.pol.reg <- cbind(matrix.kpca.pol[,1:10],digito=matrix.kpca.pol$digito)
+
+fit.kpca.pol <- multinom(digito ~ .,data=matrix.kpca.pol.reg)
+fit.kpca.pol
+
+test.kpca.pol <- as.data.frame(predict(kpc_pol,zip_test[,-1]))
+names(test.kpca.pol) <- c("V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
+                      "V11","V12","V13","V14","V15","V16","V17","V18","V19","V20")
+pred.kpca.pol.reg <- predict(fit.kpca.pol, newdata = data.frame(test.kpca.pol),
+                         type="class") # predicted values
+
+summary(pred.kpca.pol.reg)
+varaux2 <- rep(0,2007)
+test.kpca.pol.2 <- as.data.frame(cbind(zip_test[,1],
+                                   as.factor(pred.kpca.pol.reg),varaux2))
+summary(as.factor(test.kpca.pol.2$V2))
+test.kpca.pol.2$V2 <- test.kpca.pol.2$V2 - 1
+
+test.kpca.pol.2$varaux2 <- replace(varaux2, which(test.kpca.pol.2$V1 != test.kpca.pol.2$V2), 1)
+
+summary(as.factor(test.kpca.pol.2$varaux2))
+table(test.kpca.pol.2$V1,test.kpca.pol.2$V2)
+#renglones reales, columnas estimadas
+tabla <- round(prop.table(table(test.kpca.pol.2$V1,test.kpca.pol.2$V2),1),4)
+tabla
+for(i in 1:10){
+  print(i-1)
+  print(tabla[i,i])
+}
+
+
